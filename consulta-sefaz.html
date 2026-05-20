@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consulta Sefaz</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bg:        #080c12;
+  --surface:   #0e1420;
+  --card:      #111927;
+  --card2:     #141e2c;
+  --border:    #1d2d42;
+  --border2:   #243450;
+  --green:     #22d87a;
+  --green-bg:  #22d87a12;
+  --green-bd:  #22d87a35;
+  --orange:    #f5a623;
+  --orange-bg: #f5a62312;
+  --orange-bd: #f5a62335;
+  --red:       #ff4757;
+  --red-bg:    #ff475712;
+  --red-bd:    #ff475735;
+  --muted:     #3a5070;
+  --text:      #e8edf5;
+  --text2:     #8faabf;
+  --mono:      'IBM Plex Mono', monospace;
+  --sans:      'Inter', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { background: var(--bg); }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  padding: 28px 20px 48px;
+}
+
+/* ─── LAYOUT ─── */
+.page { max-width: 1140px; margin: 0 auto; }
+
+/* ─── TOP BAR ─── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-logo {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, #1a3a6a 0%, #0e1f3d 100%);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.brand-text h1 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.1;
+}
+
+.brand-text p {
+  font-size: 0.7rem;
+  color: var(--text2);
+  font-family: var(--mono);
+  margin-top: 2px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--green-bg);
+  border: 1px solid var(--green-bd);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--green);
+  letter-spacing: .08em;
+}
+
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: glow 2s infinite;
+}
+
+@keyframes glow {
+  0%,100% { box-shadow: 0 0 0 0 #22d87a55; }
+  50%      { box-shadow: 0 0 0 6px transparent; }
+}
+
+.last-sync {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ─── STATS ROW ─── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color .2s;
+}
+
+.stat:hover { border-color: var(--border2); }
+
+.stat-label {
+  font-size: 0.65rem;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--text2);
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.stat.s-ok   .stat-value { color: var(--green); }
+.stat.s-warn .stat-value { color: var(--orange); }
+.stat.s-err  .stat-value { color: var(--red); }
+
+/* ─── DOC TABS ─── */
+.doc-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 8px 22px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  background: var(--card);
+  color: var(--text2);
+  transition: all .15s;
+  letter-spacing: .04em;
+}
+
+.tab-btn:hover { color: var(--text); border-color: var(--border2); }
+
+.tab-btn.active {
+  background: var(--orange);
+  color: #0a0c12;
+  border-color: var(--orange);
+  font-weight: 700;
+}
+
+/* ─── STATE GRID ─── */
+.state-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.state-btn {
+  position: relative;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 13px 4px 10px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: center;
+  letter-spacing: .06em;
+  transition: transform .12s, box-shadow .15s, border-color .15s, background .15s;
+}
+
+.state-btn:hover { transform: translateY(-2px); }
+
+.state-btn.st-ok   { background: var(--green-bg);  color: var(--green);  border-color: var(--green-bd); }
+.state-btn.st-warn { background: var(--orange-bg); color: var(--orange); border-color: var(--orange-bd); }
+.state-btn.st-err  { background: var(--red-bg);    color: var(--red);    border-color: var(--red-bd); }
+.state-btn.st-grey { background: #0e141d;          color: var(--muted);  border-color: var(--border); }
+
+.state-btn.active { border-width: 2px; box-shadow: 0 0 0 3px #ffffff18; }
+.state-btn.active.st-ok   { border-color: var(--green);  background: #22d87a20; }
+.state-btn.active.st-warn { border-color: var(--orange); background: #f5a62320; }
+.state-btn.active.st-err  { border-color: var(--red);    background: #ff475720; }
+.state-btn.active.st-grey { border-color: var(--muted);  background: #1a2535; }
+
+/* dot */
+.state-btn::after {
+  content: '';
+  position: absolute;
+  top: 5px; right: 6px;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+}
+
+.state-btn.st-ok::after   { background: var(--green); }
+.state-btn.st-warn::after { background: var(--orange); }
+.state-btn.st-err::after  { background: var(--red); animation: glow-red 1.4s infinite; }
+.state-btn.st-grey::after { background: var(--muted); }
+
+@keyframes glow-red {
+  0%,100% { box-shadow: 0 0 0 0 #ff475766; }
+  50%      { box-shadow: 0 0 0 4px transparent; }
+}
+
+/* ─── CHART CARD ─── */
+.chart-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.chart-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 10px;
+  background: var(--card2);
+}
+
+.chart-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.chart-uf-badge {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: var(--border);
+  color: var(--text);
+  border: 1px solid var(--border2);
+}
+
+.status-chip {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 20px;
+  letter-spacing: .04em;
+}
+
+.chip-ok   { background: var(--green-bg);  color: var(--green);  border: 1px solid var(--green-bd); }
+.chip-warn { background: var(--orange-bg); color: var(--orange); border: 1px solid var(--orange-bd); }
+.chip-err  { background: var(--red-bg);    color: var(--red);    border: 1px solid var(--red-bd); }
+.chip-grey { background: #0e141d;          color: var(--muted);  border: 1px solid var(--border); }
+
+/* chart area */
+.chart-body {
+  padding: 24px 20px 16px;
+}
+
+.chart-wrap {
+  position: relative;
+  height: 280px;
+}
+
+/* legend */
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  background: var(--card2);
+  flex-wrap: wrap;
+}
+
+.leg-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text2);
+}
+
+.leg-line { width: 22px; height: 2.5px; border-radius: 2px; }
+
+.no-data-msg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text2);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.no-data-msg svg { opacity: .3; }
+
+/* ─── HISTORY STRIP ─── */
+.history-section {
+  margin-top: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: var(--card2);
+  border-bottom: 1px solid var(--border);
+}
+
+.history-head-label {
+  font-size: 0.72rem;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--text2);
+}
+
+.history-head-meta {
+  font-size: 0.68rem;
+  font-family: var(--mono);
+  color: var(--muted);
+}
+
+.history-strip {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 12px 18px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.history-strip::-webkit-scrollbar { display: none; }
+
+.h-seg {
+  flex-shrink: 0;
+  width: 18px;
+  height: 36px;
+  border-radius: 4px;
+  cursor: default;
+  transition: opacity .15s, transform .1s;
+  position: relative;
+}
+
+.h-seg:hover { opacity: .8; transform: scaleY(1.1); }
+
+.h-seg.hk-ok   { background: var(--green); opacity: .75; }
+.h-seg.hk-warn { background: var(--orange); opacity: .75; }
+.h-seg.hk-err  { background: var(--red); opacity: .75; }
+.h-seg.hk-none { background: var(--border); opacity: .5; }
+
+.history-empty {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  padding: 14px 18px;
+}
+
+/* ─── FOOTER ─── */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.footer p {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.footer a { color: var(--green); text-decoration: none; }
+.footer a:hover { text-decoration: underline; }
+
+.countdown-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--text2);
+}
+
+.prog-track {
+  width: 90px; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.prog-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--green);
+  transition: width 1s linear, background .5s;
+}
+
+/* ─── SKELETON ─── */
+.skeleton {
+  background: linear-gradient(90deg, var(--border) 25%, var(--card2) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.3s infinite;
+  color: transparent !important;
+}
+
+.skeleton::after { display: none !important; }
+
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 640px) {
+  body { padding: 16px 12px 40px; }
+  .state-grid { grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); }
+  .chart-wrap { height: 220px; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-logo">🖥️</div>
+      <div class="brand-text">
+        <h1>Consulta Sefaz</h1>
+        <p>Monitor de disponibilidade em tempo real</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="last-sync" id="lastSync">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Aguardando...
+      </div>
+      <div class="live-badge"><div class="live-dot"></div>AO VIVO</div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row" id="statsRow">
+    <div class="stat"><div class="stat-label">Total</div><div class="stat-value" id="s-total" style="color:var(--text)">—</div></div>
+    <div class="stat s-ok">  <div class="stat-label">Operacional</div><div class="stat-value" id="s-ok">—</div></div>
+    <div class="stat s-warn"><div class="stat-label">Instável</div>  <div class="stat-value" id="s-warn">—</div></div>
+    <div class="stat s-err"> <div class="stat-label">Indisponível</div><div class="stat-value" id="s-err">—</div></div>
+  </div>
+
+  <!-- DOC TABS -->
+  <div class="doc-tabs">
+    <button class="tab-btn active" onclick="selectType('NF-e', this)">NF-e</button>
+    <button class="tab-btn"        onclick="selectType('NFC-e', this)">NFC-e</button>
+    <button class="tab-btn"        onclick="selectType('CT-e', this)">CT-e</button>
+    <button class="tab-btn"        onclick="selectType('MDF-e', this)">MDF-e</button>
+  </div>
+
+  <!-- STATE GRID -->
+  <div class="state-grid" id="stateGrid"></div>
+
+  <!-- CHART CARD -->
+  <div class="chart-card">
+    <div class="chart-card-head">
+      <div class="chart-title" id="chartTitle">
+        <svg width="16" height="16" fill="none" stroke="var(--text2)" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>Selecione um estado para ver o gráfico</span>
+      </div>
+      <span class="status-chip chip-grey" id="chartStatus">—</span>
+    </div>
+
+    <div class="chart-body">
+      <div class="chart-wrap">
+        <canvas id="mainChart"></canvas>
+        <div class="no-data-msg" id="noDataMsg">
+          <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3l18 18M9 9v12m6-6v6M3 17V7m0 0l18 10"/></svg>
+          <span>Clique em um estado para ver o histórico</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-legend">
+      <div class="leg-item"><div class="leg-line" style="background:var(--green)"></div>Operacional</div>
+      <div class="leg-item"><div class="leg-line" style="background:var(--orange)"></div>Instável / Lentidão</div>
+      <div class="leg-item"><div class="leg-line" style="background:var(--red)"></div>Indisponível</div>
+    </div>
+  </div>
+
+  <!-- HISTORY STRIP -->
+  <div class="history-section" id="historySection" style="display:none">
+    <div class="history-head">
+      <span class="history-head-label" id="historyLabel">Histórico · —</span>
+      <span class="history-head-meta">últimos 30 registros desde a primeira visita</span>
+    </div>
+    <div id="historyStrip"></div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <p>Dados: <a href="https://monitorsefaz.webmaniabr.com/public-api" target="_blank">monitorsefaz.webmaniabr.com</a> — API pública gratuita</p>
+    <div class="countdown-wrap">
+      Próx. atualização: <strong id="countdown">60</strong>s
+      <div class="prog-track"><div class="prog-fill" id="progFill" style="width:100%"></div></div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// ─────────────────────────────────────────────────────────────
+//  CONFIG
+// ─────────────────────────────────────────────────────────────
+const API_URL     = 'https://monitorsefaz.webmaniabr.com/v3/components.json';
+const REFRESH_SEC = 60;
+const HISTORY_KEY = 'sefaz_hist_v2';
+const MAX_HIST    = 30;
+
+const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT',
+             'PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
+
+const DOC_KW = {
+  'NF-e':  ['nf-e','nfe'],
+  'NFC-e': ['nfc-e','nfce'],
+  'CT-e':  ['ct-e','cte'],
+  'MDF-e': ['mdf-e','mdfe'],
+};
+
+// tier: 0 = ERRO (pior) ... 4 = NORMAL (melhor)
+// O eixo Y vai de -0.3 a 4.3 para dar respiro visual nas bordas
+const STATUS_TIER = {
+  MAJOROUTAGE:         0,
+  PARTIALOUTAGE:       1,
+  UNDERMAINTENANCE:    2,
+  DEGRADEDPERFORMANCE: 2,
+  OPERATIONAL:         4,
+};
+
+const TIER_LABEL = { 0:'Erro', 1:'Timeout', 2:'Muito lento', 3:'Lento', 4:'Normal ≤ 2s' };
+const TIER_COLOR = { 0:'#ff4757', 1:'#ff4757', 2:'#f5a623', 3:'#f5a623', 4:'#22d87a' };
+
+// ─────────────────────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────────────────────
+let currentType   = 'NF-e';
+let selectedUF    = null;
+let allComponents = [];
+let stateStatus   = {};
+let chart         = null;
+let countdownVal  = REFRESH_SEC;
+let countdownTmr  = null;
+
+// Carrega histórico persistido (sobrevive entre visitas/reloads)
+let history = {};
+try { history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || {}; } catch(e) { history = {}; }
+
+function saveHistory() {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch(e) {}
+}
+
+// ─────────────────────────────────────────────────────────────
+//  FETCH
+// ─────────────────────────────────────────────────────────────
+async function fetchData() {
+  try {
+    const res = await fetch(API_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const raw = await res.json();
+    const lista = Array.isArray(raw) ? raw : (raw.components || []);
+
+    allComponents = [];
+    for (const item of lista) {
+      if (item.children && item.children.length > 0) {
+        for (const child of item.children) allComponents.push({ ...child, _group: item.name });
+      } else {
+        allComponents.push(item);
+      }
+    }
+
+    processStatus();
+    updateStats();
+    renderGrid();
+
+    document.getElementById('lastSync').innerHTML =
+      `<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+       Atualizado ${new Date().toLocaleTimeString('pt-BR')}`;
+
+    if (!selectedUF) selectUF('SP');
+    else             updateChart(selectedUF);
+
+  } catch(e) {
+    console.error('API Error:', e);
+  }
+  resetCountdown();
+}
+
+// ─────────────────────────────────────────────────────────────
+//  PROCESS
+// ─────────────────────────────────────────────────────────────
+function processStatus() {
+  const now  = new Date();
+  const time = now.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+
+  for (const uf of UFS) {
+    const comp = findComponent(uf, currentType);
+    const tier  = comp ? (STATUS_TIER[comp.status] ?? -1) : -1;
+    stateStatus[uf] = { status: comp?.status || 'UNKNOWN', tier };
+
+    const key = `${uf}_${currentType}`;
+    if (!history[key]) history[key] = [];
+
+    // Não duplica o mesmo minuto
+    const last = history[key][history[key].length - 1];
+    if (!last || last.time !== time) {
+      history[key].push({ time, tier, color: tier >= 0 ? TIER_COLOR[tier] : '#3a5070' });
+      if (history[key].length > MAX_HIST) history[key].shift();
+    }
+  }
+  saveHistory();
+}
+
+// Busca componente por UF + tipo de documento
+function findComponent(uf, type) {
+  const kw = DOC_KW[type] || [];
+  const terms = [uf.toLowerCase()];
+
+  // MAPA AJUSTADO: Inclui o nome por extenso e as Sefaz Virtuais (SVRS / SVAN) que cada estado usa
+  const alias = {
+    AC: ['acre', 'svan'],
+    AL: ['alagoas', 'svrs'],
+    AM: ['amazonas'],
+    AP: ['amapá', 'amapa', 'svan', 'svrs'],
+    BA: ['bahia'],
+    CE: ['ceará', 'ceara'],
+    DF: ['distrito federal', 'svrs'],
+    ES: ['espírito', 'espirito', 'svan'],
+    GO: ['goiás', 'goias'],
+    MA: ['maranhão', 'maranhao', 'svan'],
+    MG: ['minas gerais', 'minas'],
+    MS: ['mato grosso do sul', 'svrs'],
+    MT: ['mato grosso'],
+    PA: ['pará', 'para', 'svan'],
+    PB: ['paraíba', 'paraiba', 'svrs'],
+    PE: ['pernambuco'],
+    PI: ['piauí', 'piaui', 'svrs'],
+    PR: ['paraná', 'parana'],
+    RJ: ['rio de janeiro', 'svrs'], // RJ usa a estrutura RS / SVRS para contingência/NFCe
+    RN: ['rio grande do norte', 'svcr', 'svan'],
+    RO: ['rondônia', 'rondonia', 'svrs'],
+    RR: ['roraima', 'svrs'],
+    RS: ['rio grande do sul'],
+    SC: ['santa catarina', 'sc', 'svrs'],
+    SE: ['sergipe', 'svrs'],
+    SP: ['são paulo', 'sao paulo'],
+    TO: ['tocantins', 'svrs']
+  };
+  
+  if (alias[uf]) terms.push(...alias[uf]);
+
+  const match = (name) => terms.some(t => name.includes(t));
+
+  // Tenta match com tipo de documento
+  let found = allComponents.find(c => {
+    const n = (c.name + ' ' + (c._group||'')).toLowerCase();
+    return match(n) && kw.some(k => n.includes(k));
+  });
+  
+  // Fallback: só UF
+  if (!found) found = allComponents.find(c => {
+    const n = (c.name + ' ' + (c._group||'')).toLowerCase();
+    return match(n);
+  });
+  
+  return found || null;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  STATS
+// ─────────────────────────────────────────────────────────────
+function updateStats() {
+  const vals = UFS.map(u => stateStatus[u]?.tier ?? -1);
+  document.getElementById('s-total').textContent = UFS.length;
+  document.getElementById('s-ok').textContent    = vals.filter(t => t === 4).length;
+  document.getElementById('s-warn').textContent  = vals.filter(t => t >= 1 && t < 4).length;
+  document.getElementById('s-err').textContent   = vals.filter(t => t === 0).length;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  GRID
+// ─────────────────────────────────────────────────────────────
+function ufClass(uf) {
+  const t = stateStatus[uf]?.tier ?? -1;
+  if (t < 0) return 'st-grey';
+  if (t === 4) return 'st-ok';
+  if (t >= 1)  return 'st-warn';
+  return 'st-err';
+}
+
+function renderGrid() {
+  document.getElementById('stateGrid').innerHTML = UFS.map(uf =>
+    `<button class="state-btn ${ufClass(uf)} ${selectedUF===uf?'active':''}"
+       id="uf-${uf}" onclick="selectUF('${uf}')">${uf}</button>`
+  ).join('');
+}
+
+// ─────────────────────────────────────────────────────────────
+//  SELECT
+// ─────────────────────────────────────────────────────────────
+function selectUF(uf) {
+  selectedUF = uf;
+  document.querySelectorAll('.state-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('uf-' + uf)?.classList.add('active');
+  updateChart(uf);
+  renderHistoryStrip(uf);
+}
+
+function selectType(type, btn) {
+  currentType = type;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  processStatus();
+  updateStats();
+  renderGrid();
+  if (selectedUF) { updateChart(selectedUF); renderHistoryStrip(selectedUF); }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  CHART
+// ─────────────────────────────────────────────────────────────
+function updateChart(uf) {
+  const key   = `${uf}_${currentType}`;
+  const hist  = history[key] || [];
+  const s     = stateStatus[uf];
+  const cls   = ufClass(uf);
+
+  // Chip
+  const chipEl  = document.getElementById('chartStatus');
+  const chipMap = {
+    'st-ok':   ['chip-ok',   statusText(s?.status)],
+    'st-warn': ['chip-warn', statusText(s?.status)],
+    'st-err':  ['chip-err',  statusText(s?.status)],
+    'st-grey': ['chip-grey', 'Sem dados'],
+  };
+  const [chipCls, chipTxt] = chipMap[cls] || ['chip-grey','—'];
+  chipEl.className = 'status-chip ' + chipCls;
+  chipEl.textContent = chipTxt;
+
+  // Título
+  document.getElementById('chartTitle').innerHTML = `
+    <svg width="16" height="16" fill="none" stroke="var(--text2)" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Histórico de disponibilidade
+    <span class="chart-uf-badge">${uf} · ${currentType}</span>`;
+
+  const noData = document.getElementById('noDataMsg');
+
+  if (hist.length === 0) {
+    noData.style.display = 'flex';
+    if (chart) { chart.destroy(); chart = null; }
+    return;
+  }
+  noData.style.display = 'none';
+
+  const labels = hist.map(h => h.time);
+  const data   = hist.map(h => h.tier >= 0 ? h.tier : null);
+  const colors = hist.map(h => h.color);
+
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        borderColor(ctx) {
+          const { ctx: c, chartArea } = ctx.chart;
+          if (!chartArea) return '#22d87a';
+          const g = c.createLinearGradient(chartArea.left, 0, chartArea.right, 0);
+          const n = Math.max(colors.length - 1, 1);
+          colors.forEach((col, i) => g.addColorStop(i / n, col));
+          return g;
+        },
+        borderWidth: 2.5,
+        pointRadius: 6,
+        pointHoverRadius: 9,
+        pointBackgroundColor: colors,
+        pointBorderColor: '#0e1420',
+        pointBorderWidth: 2,
+        tension: 0.3,
+        fill: false,
+        spanGaps: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 450 },
+      layout: { padding: { top: 12, bottom: 4, left: 4, right: 16 } },
+      scales: {
+        x: {
+          grid: { color: '#1d2d4260', drawBorder: false },
+          ticks: {
+            color: '#6a8aaa',
+            font: { family: "'IBM Plex Mono'", size: 11 },
+            maxRotation: 0,
+            maxTicksLimit: 10,
+          }
+        },
+        y: {
+          // ← AQUI: min/max com folga de 0.6 para desgrudar bolinhas das bordas
+          min: -0.6,
+          max:  4.6,
+          grid: { color: '#1d2d4270', drawBorder: false },
+          ticks: {
+            color: '#8faabf',
+            font: { family: "'Inter'", size: 12, weight: '600' },
+            stepSize: 1,
+            padding: 14,
+            callback: val => {
+              // Só mostra labels nos inteiros
+              if (Number.isInteger(val) && val >= 0 && val <= 4) return TIER_LABEL[val];
+              return '';
+            }
+          }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#111927',
+          borderColor: '#243450',
+          borderWidth: 1,
+          titleColor: '#e8edf5',
+          bodyColor: '#f5a623',
+          padding: 12,
+          titleFont: { family: "'IBM Plex Mono'", size: 11 },
+          bodyFont:  { family: "'Inter'", size: 12, weight: '600' },
+          callbacks: {
+            title: items => `⏱ ${items[0].label}`,
+            label: ctx => {
+              const t = ctx.raw;
+              if (t === null || t === undefined) return ' Sem dado';
+              return ' ' + (TIER_LABEL[t] ?? '?');
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  HISTORY STRIP (blocos coloridos abaixo do gráfico)
+//  Responde à pergunta: "como estava antes de entrar no site?"
+// ─────────────────────────────────────────────────────────────
+function renderHistoryStrip(uf) {
+  const key  = `${uf}_${currentType}`;
+  const hist = history[key] || [];
+  const sec  = document.getElementById('historySection');
+  const strip = document.getElementById('historyStrip');
+
+  document.getElementById('historyLabel').textContent = `Histórico · ${uf} · ${currentType}`;
+
+  if (hist.length === 0) {
+    sec.style.display = 'block';
+    strip.innerHTML = `<div class="history-empty">Nenhum registro ainda — aguarde a próxima coleta (${REFRESH_SEC}s)</div>`;
+    return;
+  }
+
+  sec.style.display = 'block';
+
+  // Cada bloco = 1 registro; tooltip nativo via title
+  strip.innerHTML = `<div class="history-strip">` +
+    hist.map(h => {
+      let cls = 'hk-none';
+      if (h.tier === 4)      cls = 'hk-ok';
+      else if (h.tier >= 1)  cls = 'hk-warn';
+      else if (h.tier === 0) cls = 'hk-err';
+      const lbl = TIER_LABEL[h.tier] ?? 'Sem dado';
+      return `<div class="h-seg ${cls}" title="${h.time} — ${lbl}"></div>`;
+    }).join('') +
+  `</div>`;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  UTILS
+// ─────────────────────────────────────────────────────────────
+function statusText(s) {
+  return { OPERATIONAL:'Operacional', DEGRADEDPERFORMANCE:'Instavel', UNDERMAINTENANCE:'Manutenção', PARTIALOUTAGE:'Parcial', MAJOROUTAGE:'Indisponível' }[s] || 'Desconhecido';
+}
+
+// ─────────────────────────────────────────────────────────────
+//  COUNTDOWN
+// ─────────────────────────────────────────────────────────────
+function resetCountdown() {
+  clearInterval(countdownTmr);
+  countdownVal = REFRESH_SEC;
+  tickCountdown();
+  countdownTmr = setInterval(() => {
+    countdownVal--;
+    tickCountdown();
+    if (countdownVal <= 0) { clearInterval(countdownTmr); fetchData(); }
+  }, 1000);
+}
+
+function tickCountdown() {
+  document.getElementById('countdown').textContent = countdownVal;
+  const pct  = (countdownVal / REFRESH_SEC) * 100;
+  const fill = document.getElementById('progFill');
+  fill.style.width      = pct + '%';
+  fill.style.background = pct > 60 ? 'var(--green)' : pct > 25 ? 'var(--orange)' : 'var(--red)';
+}
+
+// ─────────────────────────────────────────────────────────────
+//  INIT — esqueleto enquanto carrega
+// ─────────────────────────────────────────────────────────────
+document.getElementById('stateGrid').innerHTML =
+  UFS.map(uf => `<button class="state-btn st-grey skeleton" disabled>${uf}</button>`).join('');
+
+fetchData();
+</script>
+</body>
+</html>
